@@ -37,8 +37,15 @@ static inline void ResetFormat(AudioStreamBasicDescription *ioDescription) {
     if (self = [super initWithComponentDescription:AEAudioComponentDescriptionMake(kAudioUnitManufacturer_Apple, kAudioUnitType_Generator, kAudioUnitSubType_AudioFilePlayer)
                                    audioController:audioController
                                              error:error]) {
+        
+        
+        blockScheduler_ = [[AEBlockScheduler alloc] initWithAudioController:audioController];
+        [audioController addTimingReceiver:blockScheduler_];
+        
         [audioController addTimingReceiver:self];
         filePlayerUnit_ = self.audioUnit;
+        
+        currentTimeStamp_ = -1;
     }
 
 
@@ -54,7 +61,14 @@ static inline void ResetFormat(AudioStreamBasicDescription *ioDescription) {
                                    audioController:audioController
                                 preInitializeBlock:block
                                              error:error]) {
+        
+        blockScheduler_ = [[AEBlockScheduler alloc] initWithAudioController:audioController];
+        [audioController addTimingReceiver:blockScheduler_];
+        
         [audioController addTimingReceiver:self];
+        filePlayerUnit_ = self.audioUnit;
+        
+        currentTimeStamp_ = -1;
     }
     return self;
 }
@@ -91,6 +105,9 @@ static inline void ResetFormat(AudioStreamBasicDescription *ioDescription) {
 
     fileDuration = (numberOfPackets * fileFormat.mFramesPerPacket);// / fileFormat.mSampleRate;
 
+    //copy the passed in URL
+    _url = [fileUrl copy];
+    
     return noErr;
 }
 
@@ -165,19 +182,32 @@ static inline void ResetFormat(AudioStreamBasicDescription *ioDescription) {
 
 #pragma mark - Transport
 
-- (BOOL)play{
+- (void)play{
     if (fileIsValid == NO){
-        return NO;
+        return;
     }
-    else{
-        // tell the file Player Unit AU when to start playing -1 means next render cycle
+        
+    [blockScheduler_ scheduleBlock:^(const AudioTimeStamp *time, UInt32 offset) {
+        // We are now on the Core Audio thread at *time*, which is *offset* frames
+        // before the time we scheduled, *timestamp*.
+        
+        printf("%d\n", (unsigned int)offset);
+        
+        // tell the file Player Unit AU when to start playing -1 means in the next render cycle
+        //as we are on the audio thread, this means immediately
         AudioTimeStamp startTime;
         memset (&startTime, 0, sizeof(startTime));
         startTime.mFlags = kAudioTimeStampSampleTimeValid;
         startTime.mSampleTime = -1;
+        
+        checkResult(AudioUnitSetProperty(filePlayerUnit_, kAudioUnitProperty_ScheduleStartTimeStamp, kAudioUnitScope_Global, 0, &startTime, sizeof(startTime)), "Starting playback on the file player audio unit");
 
-        return checkResult(AudioUnitSetProperty(filePlayerUnit_, kAudioUnitProperty_ScheduleStartTimeStamp, kAudioUnitScope_Global, 0, &startTime, sizeof(startTime)), "Starting playback on the file player audio unit");
+        
     }
+                       atTime:currentTimeStamp_
+                timingContext:AEAudioTimingContextOutput
+                   identifier:@"my event"];
+
 }
 
 - (BOOL)stop{
@@ -192,7 +222,7 @@ static void timingReceiver(id receiver, AEAudioController *audioController, cons
     if (context == AEAudioTimingContextOutput) {
         //this is the pre-render callback. Here we can determine if
         //the audio file player will stop playing during this round of playback.
-
+        audioUnitFilePlayer->currentTimeStamp_ = time->mSampleTime;
     }
 }
 

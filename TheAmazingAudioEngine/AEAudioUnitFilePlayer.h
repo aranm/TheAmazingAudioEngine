@@ -18,6 +18,11 @@ extern "C" {
     AudioStreamBasicDescription fileFormat;
     UInt64 numberOfPackets;
     UInt64 fileDuration;
+    
+    
+    Float64 currentTimeStamp_;
+    AEBlockScheduler *blockScheduler_;
+    
 }
 
 /*!
@@ -38,7 +43,7 @@ extern "C" {
 
 
 - (void)loadAudioFileFromUrl:(NSURL *)fileUrl;
-- (BOOL)play;
+- (void)play;
 - (BOOL)stop;
 
 //- (BOOL)playWithOffset:(UInt32)timeStamp;
