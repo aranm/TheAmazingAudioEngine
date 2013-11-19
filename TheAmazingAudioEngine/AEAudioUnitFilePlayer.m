@@ -103,7 +103,7 @@ static inline void ResetFormat(AudioStreamBasicDescription *ioDescription) {
     rgn.mCompletionProc = NULL;
     rgn.mCompletionProcUserData = NULL;
     rgn.mAudioFile = audioFile;
-    rgn.mLoopCount = 99;
+    rgn.mLoopCount = 999;
     rgn.mStartFrame = 0;
     rgn.mFramesToPlay = (UInt32)(numberOfPackets * fileFormat.mFramesPerPacket);
 
@@ -133,6 +133,10 @@ static inline void ResetFormat(AudioStreamBasicDescription *ioDescription) {
         return err;
     }
 
+    if (err == noErr){
+        fileIsValid = YES;
+    }
+    
     return err;
 
 }
@@ -152,7 +156,7 @@ static inline void ResetFormat(AudioStreamBasicDescription *ioDescription) {
     // workaround for a race condition in the file player AU
     usleep (10 * 1000);
 
-    fileIsValid = false;
+    fileIsValid = NO;
 
     checkResult([self openAudioFile:fileUrl], "Opening audio file");
     checkResult([self prepareAudioFile], "Preparing audio file for playback");
@@ -162,7 +166,7 @@ static inline void ResetFormat(AudioStreamBasicDescription *ioDescription) {
 #pragma mark - Transport
 
 - (BOOL)play{
-    if (fileIsValid == false){
+    if (fileIsValid == NO){
         return NO;
     }
     else{
@@ -172,7 +176,7 @@ static inline void ResetFormat(AudioStreamBasicDescription *ioDescription) {
         startTime.mFlags = kAudioTimeStampSampleTimeValid;
         startTime.mSampleTime = -1;
 
-        return checkResult(AudioUnitSetProperty(filePlayerUnit_, kAudioUnitProperty_ScheduleStartTimeStamp, kAudioUnitScope_Global, 0, &startTime, sizeof(startTime)), "Staring playback on the file player audio unit");
+        return checkResult(AudioUnitSetProperty(filePlayerUnit_, kAudioUnitProperty_ScheduleStartTimeStamp, kAudioUnitScope_Global, 0, &startTime, sizeof(startTime)), "Starting playback on the file player audio unit");
     }
 }
 

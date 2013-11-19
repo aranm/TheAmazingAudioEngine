@@ -9,11 +9,11 @@
 extern "C" {
 #endif
 
-#import <TheAmazingAudioEngine/TheAmazingAudioEngine.h>
+#import "TheAmazingAudioEngine.h"
 
 @interface AEAudioUnitFilePlayer : AEAudioUnitChannel <AEAudioTimingReceiver> {
     AudioUnit filePlayerUnit_;
-    Boolean fileIsValid;
+    BOOL fileIsValid;
     AudioFileID audioFile;
     AudioStreamBasicDescription fileFormat;
     UInt64 numberOfPackets;
