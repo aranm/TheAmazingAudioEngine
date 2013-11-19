@@ -37,6 +37,8 @@
 		4C99588E16C0825F0011FB01 /* AEAudioUnitFilter.m in Sources */ = {isa = PBXBuildFile; fileRef = 4C99588C16C0825F0011FB01 /* AEAudioUnitFilter.m */; };
 		4CEC0EB916B5294300D11ED9 /* AEBlockFilter.h in Headers */ = {isa = PBXBuildFile; fileRef = 4CEC0EB716B5294200D11ED9 /* AEBlockFilter.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		4CEC0EBA16B5294300D11ED9 /* AEBlockFilter.m in Sources */ = {isa = PBXBuildFile; fileRef = 4CEC0EB816B5294300D11ED9 /* AEBlockFilter.m */; };
+		8A9818112C190689407F581F /* AEAudioUnitFilePlayer.m in Sources */ = {isa = PBXBuildFile; fileRef = 8A9817705A68C16A5E414311 /* AEAudioUnitFilePlayer.m */; };
+		8A981DEB7FAD3334C101E67E /* AEAudioUnitFilePlayer.h in Headers */ = {isa = PBXBuildFile; fileRef = 8A981EA698EA4DC5AAA2C72B /* AEAudioUnitFilePlayer.h */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -95,6 +97,8 @@
 		4CE501971493F82600F23607 /* TheAmazingAudioEngine-Prefix.pch */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "TheAmazingAudioEngine-Prefix.pch"; sourceTree = "<group>"; };
 		4CEC0EB716B5294200D11ED9 /* AEBlockFilter.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AEBlockFilter.h; sourceTree = "<group>"; };
 		4CEC0EB816B5294300D11ED9 /* AEBlockFilter.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = AEBlockFilter.m; sourceTree = "<group>"; };
+		8A9817705A68C16A5E414311 /* AEAudioUnitFilePlayer.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = AEAudioUnitFilePlayer.m; sourceTree = "<group>"; };
+		8A981EA698EA4DC5AAA2C72B /* AEAudioUnitFilePlayer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AEAudioUnitFilePlayer.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -207,6 +211,8 @@
 				4CE501971493F82600F23607 /* TheAmazingAudioEngine-Prefix.pch */,
 				4C0944FF16FBD7460054608E /* AEBlockScheduler.h */,
 				4C09450016FBD7460054608E /* AEBlockScheduler.m */,
+				8A981EA698EA4DC5AAA2C72B /* AEAudioUnitFilePlayer.h */,
+				8A9817705A68C16A5E414311 /* AEAudioUnitFilePlayer.m */,
 			);
 			path = TheAmazingAudioEngine;
 			sourceTree = "<group>";
@@ -232,6 +238,7 @@
 				4C456B8D16D59365008ED99D /* AEBlockAudioReceiver.h in Headers */,
 				4C4B11F416833FDD00A3BA2E /* AEBlockChannel.h in Headers */,
 				4C09450116FBD7460054608E /* AEBlockScheduler.h in Headers */,
+				8A981DEB7FAD3334C101E67E /* AEAudioUnitFilePlayer.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -334,6 +341,7 @@
 				4C99588E16C0825F0011FB01 /* AEAudioUnitFilter.m in Sources */,
 				4C456B8E16D59365008ED99D /* AEBlockAudioReceiver.m in Sources */,
 				4C09450216FBD7460054608E /* AEBlockScheduler.m in Sources */,
+				8A9818112C190689407F581F /* AEAudioUnitFilePlayer.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
