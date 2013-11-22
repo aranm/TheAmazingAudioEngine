@@ -19,9 +19,9 @@ extern "C" {
     UInt64 numberOfPackets;
     UInt64 fileDuration;
     
-    
     Float64 currentTimeStamp_;
     AEBlockScheduler *blockScheduler_;
+    AEAudioController *audioController_;
     
 }
 
@@ -44,7 +44,7 @@ extern "C" {
 
 - (void)loadAudioFileFromUrl:(NSURL *)fileUrl;
 - (void)play;
-- (BOOL)stop;
+- (void)stop;
 
 //- (BOOL)playWithOffset:(UInt32)timeStamp;
 

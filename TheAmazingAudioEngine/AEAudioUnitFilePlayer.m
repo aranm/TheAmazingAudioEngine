@@ -30,6 +30,7 @@ static inline void ResetFormat(AudioStreamBasicDescription *ioDescription) {
 }
 
 @implementation AEAudioUnitFilePlayer
+@synthesize url = _url, loop=_loop, volume=_volume, pan=_pan, channelIsPlaying=_channelIsPlaying, channelIsMuted=_channelIsMuted, removeUponFinish=_removeUponFinish, completionBlock = _completionBlock, startLoopBlock = _startLoopBlock;
 
 - (id)initAudioUnitFilePlayerWithAudioController:(AEAudioController *)audioController
                                            error:(NSError **)error {
@@ -38,7 +39,7 @@ static inline void ResetFormat(AudioStreamBasicDescription *ioDescription) {
                                    audioController:audioController
                                              error:error]) {
         
-        
+        audioController_ = audioController;
         blockScheduler_ = [[AEBlockScheduler alloc] initWithAudioController:audioController];
         [audioController addTimingReceiver:blockScheduler_];
         
@@ -61,6 +62,8 @@ static inline void ResetFormat(AudioStreamBasicDescription *ioDescription) {
                                    audioController:audioController
                                 preInitializeBlock:block
                                              error:error]) {
+        
+        audioController_ = audioController;
         
         blockScheduler_ = [[AEBlockScheduler alloc] initWithAudioController:audioController];
         [audioController addTimingReceiver:blockScheduler_];
@@ -120,7 +123,12 @@ static inline void ResetFormat(AudioStreamBasicDescription *ioDescription) {
     rgn.mCompletionProc = NULL;
     rgn.mCompletionProcUserData = NULL;
     rgn.mAudioFile = audioFile;
-    rgn.mLoopCount = 999;
+    if (self.loop == YES){
+        rgn.mLoopCount = UINT32_MAX;
+    }
+    else{
+        rgn.mLoopCount = 0;
+    }
     rgn.mStartFrame = 0;
     rgn.mFramesToPlay = (UInt32)(numberOfPackets * fileFormat.mFramesPerPacket);
 
@@ -177,6 +185,49 @@ static inline void ResetFormat(AudioStreamBasicDescription *ioDescription) {
 
     checkResult([self openAudioFile:fileUrl], "Opening audio file");
     checkResult([self prepareAudioFile], "Preparing audio file for playback");
+
+}
+
+#pragma mark - Callbacks for file ending and looping
+
+- (void)scheduleCallbacksForTime:(Float64)endTimeStamp whereFileIsLooping:(BOOL)isLooping{
+
+    [blockScheduler_ scheduleBlock:^(const AudioTimeStamp *intervalStartTime, UInt32 offsetInFrames) {
+        printf("Ended\n");
+    }
+                            atTime:[AEBlockScheduler timestampWithSecondsFromNow:fileDuration / 44100.0]
+                     timingContext:AEAudioTimingContextOutput
+                        identifier:@"File playback stopped"
+           mainThreadResponseBlock:^{
+               
+               if (isLooping == NO){
+                   _channelIsPlaying = NO;
+               }
+               
+               if (_removeUponFinish ) {
+                   [audioController_ removeChannels:[NSArray arrayWithObject:self]];
+               }
+               
+               if ( _completionBlock ) _completionBlock();
+           }];
+}
+
+#pragma mark - Callbacks from the render thread
+
+struct checkOSStatusArguments { AEAudioUnitFilePlayer *audioUnitFilePlayer; OSStatus errorCode; };
+static void checkOSStatusHandler(AEAudioController *audioController, void *userInfo, int userInfoLength) {
+    struct checkOSStatusArguments *arg = (struct checkOSStatusArguments*)userInfo;
+    arg->audioUnitFilePlayer->_channelIsPlaying = checkResult(arg->errorCode, "Starting playback on the file player audio unit");
+}
+
+struct transportCallbackArguments { AEAudioUnitFilePlayer *audioUnitFilePlayer; Float64 endTimeStamp; BOOL isLooping; };
+static void transportCallbackHandler(AEAudioController *audioController, void *userInfo, int userInfoLength) {
+    struct transportCallbackArguments *arg = (struct transportCallbackArguments*)userInfo;
+    //queue notifications for looping or end of file
+    
+    [arg->audioUnitFilePlayer scheduleCallbacksForTime:arg->endTimeStamp whereFileIsLooping:arg->isLooping];
+    
+    printf("End or loop\n");
 }
 
 
@@ -184,15 +235,17 @@ static inline void ResetFormat(AudioStreamBasicDescription *ioDescription) {
 
 - (void)play{
     if (fileIsValid == NO){
+        _channelIsPlaying = NO;
         return;
     }
-        
+    
+    Float64 lengthOfFile = fileDuration;
+    BOOL fileIsLooping = _loop;
+    AEAudioController *blockAudioController = audioController_;
+    AEAudioUnitFilePlayer *audioUnitFilePlayer = self;
+    
+    
     [blockScheduler_ scheduleBlock:^(const AudioTimeStamp *time, UInt32 offset) {
-        // We are now on the Core Audio thread at *time*, which is *offset* frames
-        // before the time we scheduled, *timestamp*.
-        
-        printf("%d\n", (unsigned int)offset);
-        
         // tell the file Player Unit AU when to start playing -1 means in the next render cycle
         //as we are on the audio thread, this means immediately
         AudioTimeStamp startTime;
@@ -200,18 +253,37 @@ static inline void ResetFormat(AudioStreamBasicDescription *ioDescription) {
         startTime.mFlags = kAudioTimeStampSampleTimeValid;
         startTime.mSampleTime = -1;
         
-        checkResult(AudioUnitSetProperty(filePlayerUnit_, kAudioUnitProperty_ScheduleStartTimeStamp, kAudioUnitScope_Global, 0, &startTime, sizeof(startTime)), "Starting playback on the file player audio unit");
+        //determine the time when the playback will end (or loop)
+        Float64 fileEndTime = time->mSampleTime + lengthOfFile;
+        
+        //schedule looping callback
+        AEAudioControllerSendAsynchronousMessageToMainThread(blockAudioController,
+                                                             transportCallbackHandler,
+                                                             &(struct transportCallbackArguments) {
+                                                                 .audioUnitFilePlayer = audioUnitFilePlayer,
+                                                                 .endTimeStamp = fileEndTime,
+                                                                 .isLooping = fileIsLooping
+                                                             },
+                                                             sizeof(struct transportCallbackArguments));
 
         
+        OSStatus error = AudioUnitSetProperty(filePlayerUnit_, kAudioUnitProperty_ScheduleStartTimeStamp, kAudioUnitScope_Global, 0, &startTime, sizeof(AudioTimeStamp));
+            //we have an error starting playback, but we can't log it from here, we need to send a message to the main thread
+            AEAudioControllerSendAsynchronousMessageToMainThread(audioController_,
+                                                                 checkOSStatusHandler,
+                                                                 &(struct checkOSStatusArguments) {
+                                                                     .audioUnitFilePlayer = self,
+                                                                     .errorCode = error},
+                                                                 sizeof(struct checkOSStatusArguments));
     }
                        atTime:currentTimeStamp_
                 timingContext:AEAudioTimingContextOutput
                    identifier:@"my event"];
-
 }
 
-- (BOOL)stop{
-    return checkResult(AudioUnitReset(filePlayerUnit_, kAudioUnitScope_Global, 0), "Resetting audio file player unit in order to stop playback");
+- (void)stop{
+    checkResult(AudioUnitReset(filePlayerUnit_, kAudioUnitScope_Global, 0), "Resetting audio file player unit in order to stop playback");
+    _channelIsPlaying = NO;
 }
 
 #pragma mark - AEAudioTimingReceiver Protocol
